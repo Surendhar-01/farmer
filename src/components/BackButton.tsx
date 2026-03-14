@@ -25,7 +25,7 @@ export function BackButton() {
         className="flex items-center text-gray-700 hover:text-green-700 transition-colors bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
       >
         <ArrowLeft size={18} className="mr-2" />
-        <span className="font-bold">{t("back" as any) || "Back"}</span>
+        <span className="font-bold">{t("back") || "Back"}</span>
       </button>
     </div>
   );

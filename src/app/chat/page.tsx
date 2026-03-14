@@ -14,7 +14,7 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const { speak } = useSpeechSynthesis();
@@ -26,18 +26,12 @@ export default function ChatPage() {
     if (language === "ta") greeting = "வணக்கம்! நான் உங்கள் உழவன் உதவி AI. இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?";
     if (language === "hi") greeting = "नमस्ते! मैं आपका फार्मअसिस्ट एआई हूं। आज मैं आपकी कैसे मदद कर सकता हूं?";
     
-    setMessages([{ id: Date.now().toString(), sender: "ai", text: greeting }]);
+    const timer = window.setTimeout(() => {
+      setMessages([{ id: Date.now().toString(), sender: "ai", text: greeting }]);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [language]);
-
-  // Handle Voice Input
-  const { startListening, stopListening, isListening } = useSpeechRecognition((transcript) => {
-    handleSend(transcript);
-  }, true);
-
-  // Auto-scroll to bottom of chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const generateAIResponse = (userText: string) => {
     const query = userText.toLowerCase();
@@ -86,6 +80,16 @@ export default function ChatPage() {
       }
     }, 600);
   };
+
+  // Handle Voice Input
+  const { startListening, stopListening, isListening } = useSpeechRecognition((transcript) => {
+    handleSend(transcript);
+  }, true);
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
     <main className="w-full flex flex-col h-screen bg-gray-50">

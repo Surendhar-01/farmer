@@ -26,8 +26,8 @@ export default function Home() {
     {
       href: "/market",
       icon: <TrendingUp size={24} className="text-white" />,
-      title: t("market_price_viewer") || "Market Price Viewer",
-      desc: t("market_price_desc") || "Check current crop prices",
+      title: t("market_price_viewer") || "Markets and Factories Nearby",
+      desc: t("market_price_desc") || "Find markets and factories nearby",
       color: "bg-[#16a34a]"
     },
     {
@@ -119,10 +119,10 @@ export default function Home() {
           <Leaf size={32} className="text-white" />
         </div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-          Agri Orbit
+          {t("app_name") || "Agri Orbit"}
         </h1>
         <p className="text-gray-600 text-sm md:text-base">
-          {t("welcome")}, Farmer!
+          {t("welcome_farmer") || "Welcome, Farmer!"}
         </p>
       </div>
 

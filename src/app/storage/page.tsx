@@ -12,6 +12,24 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { BackButton } from "@/components/BackButton";
 
+interface StorageEntry {
+  id: string;
+  name: string;
+  address: string;
+  dist: string;
+  cap: string;
+  price: string;
+  lat: number;
+  lng: number;
+}
+
+interface StorageSearchResult {
+  name?: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
 export default function StoragePage() {
   const { t } = useLanguage();
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -24,7 +42,7 @@ export default function StoragePage() {
     days_required: ""
   });
 
-  const [storages, setStorages] = useState([
+  const [storages, setStorages] = useState<StorageEntry[]>([
     // Fallback: Authentic TNAU Data from Government of Tamil Nadu Agritech Portal
     { id: "tn1", name: "Raja Cold Storage", address: "Sendurai main road, Ariyalur-621 704", dist: "Regional", cap: "100 MT", price: "₹25/kg/day", lat: 11.139, lng: 79.076 },
     { id: "tn2", name: "Tamil Nadu Coop marketing Fed. Ltd", address: "Basin bridge road, Chennai-600 012", dist: "Regional", cap: "200 MT", price: "₹20/kg/day", lat: 13.098, lng: 80.269 },
@@ -38,9 +56,9 @@ export default function StoragePage() {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=cold+storage&format=json&limit=2&lat=${latitude}&lon=${longitude}`
       );
-      const data = await response.json();
+      const data = (await response.json()) as StorageSearchResult[];
       
-      const storageOptions = data.map((item: any, i: number) => ({
+      const storageOptions = data.map((item, i) => ({
         id: i.toString(),
         name: item.name || item.display_name.split(",")[0] || "Regional Cold Storage",
         address: item.display_name,
@@ -53,7 +71,7 @@ export default function StoragePage() {
       
       if (storageOptions.length > 0) {
         // Prepend dynamically found OSM locations to our authentic TNAU fallback locations
-        setStorages(prev => [...storageOptions, ...prev]);
+        setStorages((prev) => [...storageOptions, ...prev]);
       }
     } catch (err) {
       console.error("OSM Places Error", err);
@@ -97,15 +115,15 @@ export default function StoragePage() {
           <Snowflake size={32} className="text-white" />
         </div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-          {t("cold_storage" as any) || "Cold Storage Locator"}
+          {t("cold_storage") || "Cold Storage Locator"}
         </h1>
         <p className="text-gray-600 text-sm md:text-base">
-          {t("storage_desc" as any) || "Find and book nearby storage"}
+          {t("storage_desc") || "Find and book nearby storage"}
         </p>
       </div>
 
       <div className="p-4 space-y-4">
-        <MapView markers={storages.map(s => ({ lat: s.lat, lng: s.lng, title: s.name }))} />
+         <MapView markers={storages.map((storage) => ({ lat: storage.lat, lng: storage.lng, title: storage.name }))} />
       </div>
 
       <div className="p-4 space-y-4 mt-2">
@@ -118,17 +136,17 @@ export default function StoragePage() {
             
             <div className="flex items-center text-sm text-gray-600 mb-2 mt-2">
               <MapPin size={16} className="mr-2 text-gray-400" />
-              {s.dist} {t("distance" as any) || "away"} 
+               {s.dist} {t("distance") || "away"} 
             </div>
             
             <div className="flex justify-between items-center mb-4 mt-3">
-              <div className="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full">{t("storage_capacity" as any) || "Capacity"}: {s.cap}</div>
+              <div className="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full">{t("storage_capacity") || "Capacity"}: {s.cap}</div>
               <div className="text-gray-800 font-bold">{s.price}</div>
             </div>
 
             <Dialog>
               <DialogTrigger render={<Button className="w-full py-6 text-lg bg-blue-800 hover:bg-blue-900 rounded-xl" />}>
-                {t("book_now" as any) || t("book_storage")}
+                {t("book_now") || t("book_storage")}
               </DialogTrigger>
               <DialogContent className="rounded-3xl p-6">
                 <DialogHeader>
@@ -137,7 +155,7 @@ export default function StoragePage() {
                 {bookingSuccess ? (
                   <div className="flex flex-col items-center justify-center p-6 space-y-4">
                     <CheckCircle2 size={64} className="text-green-500" />
-                    <h2 className="text-xl font-bold text-gray-800">{t("booking_success" as any) || "Booking Successful!"}</h2>
+                    <h2 className="text-xl font-bold text-gray-800">{t("booking_success") || "Booking Successful!"}</h2>
                   </div>
                 ) : (
                   <form onSubmit={handleBooking} className="space-y-4 mt-4">
@@ -146,7 +164,7 @@ export default function StoragePage() {
                     <Input type="number" placeholder="Quantity (kg)" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} required />
                     <Input type="number" placeholder="Days Required" value={form.days_required} onChange={e => setForm({...form, days_required: e.target.value})} required />
                     <Button type="submit" disabled={loading} className="w-full py-6 text-lg bg-blue-800 hover:bg-blue-900 rounded-xl">
-                      {loading ? "..." : (t("book_now" as any) || "Book Now")}
+                      {loading ? "..." : (t("book_now") || "Book Now")}
                     </Button>
                   </form>
                 )}

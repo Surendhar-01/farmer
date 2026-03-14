@@ -3,11 +3,71 @@
 import { useLanguage } from "@/components/LanguageProvider";
 import { Landmark, CheckCircle2, MapPin } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Input } from "@/components/ui/input";
+
+interface Scheme {
+  district: string;
+  name: string;
+  amount: string;
+  eligibility: string;
+  action: string;
+  link: string;
+}
+
+const TAMIL_NADU_DISTRICTS = [
+  "All",
+  "Ariyalur",
+  "Chengalpattu",
+  "Chennai",
+  "Coimbatore",
+  "Cuddalore",
+  "Dharmapuri",
+  "Dindigul",
+  "Erode",
+  "Kallakurichi",
+  "Kancheepuram",
+  "Karur",
+  "Kanyakumari",
+  "Krishnagiri",
+  "Madurai",
+  "Mayiladuthurai",
+  "Nagapattinam",
+  "Namakkal",
+  "Perambalur",
+  "Pudukkottai",
+  "Ramanathapuram",
+  "Ranipet",
+  "Salem",
+  "Sivaganga",
+  "Tenkasi",
+  "Thanjavur",
+  "Theni",
+  "The Nilgiris",
+  "Thiruvallur",
+  "Thiruvarur",
+  "Thoothukudi",
+  "Tiruchirappalli",
+  "Tirunelveli",
+  "Tirupathur",
+  "Tiruppur",
+  "Tiruvannamalai",
+  "Vellore",
+  "Viluppuram",
+  "Virudhunagar",
+] as const;
+
+const DISTRICT_ALIASES: Record<string, string> = {
+  Trichy: "Tiruchirappalli",
+};
+
+function normalizeDistrict(district: string) {
+  return DISTRICT_ALIASES[district] ?? district;
+}
 
 // Mock API Call that inherently translates the payload to the provided language
-const fetchSchemesAPI = async (lang: string) => {
-  const dictionary: Record<string, any[]> = {
+const fetchSchemesAPI = async (lang: string): Promise<Scheme[]> => {
+  const dictionary: Record<string, Scheme[]> = {
     en: [
       { district: "All", name: "PM-KISAN Samman Nidhi", amount: "₹6,000 / year", eligibility: "All landholding farmers", action: "Apply Now", link: "https://pmkisan.gov.in/" },
       { district: "All", name: "Pradhan Mantri Fasal Bima", amount: "Crop Insurance", eligibility: "Farmers with notified crops", action: "Check Premium", link: "https://pmfby.gov.in/" },
@@ -38,7 +98,7 @@ const fetchSchemesAPI = async (lang: string) => {
   };
 
   // Simulate network delay
-  return new Promise<any[]>((resolve) => {
+  return new Promise<Scheme[]>((resolve) => {
     setTimeout(() => {
       resolve(dictionary[lang] || dictionary["en"]);
     }, 400);
@@ -48,24 +108,52 @@ const fetchSchemesAPI = async (lang: string) => {
 export default function GovernmentSchemesPage() {
   const { t, language } = useLanguage();
   const [district, setDistrict] = useState("All");
-  const [schemes, setSchemes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [schemes, setSchemes] = useState<Scheme[]>([]);
+  const [loadedLanguage, setLoadedLanguage] = useState("");
+  const loading = loadedLanguage !== language;
 
-  const districts = ["All", "Ariyalur", "Chennai", "Coimbatore", "Madurai", "Trichy"];
+  const districts = TAMIL_NADU_DISTRICTS;
 
   // Fetch fully translated schemes from API whenever language changes
   useEffect(() => {
-    setLoading(true);
+    let isActive = true;
+
     fetchSchemesAPI(language).then((data) => {
+      if (!isActive) return;
       setSchemes(data);
-      setLoading(false);
+      setLoadedLanguage(language);
     });
+
+    return () => {
+      isActive = false;
+    };
   }, [language]);
 
   // Filter schemes by exact district match, plus globally available "All" schemes
-  const filteredSchemes = district === "All" 
-    ? schemes 
-    : schemes.filter(s => s.district === "All" || s.district === district);
+  const districtFilteredSchemes =
+    district === "All"
+      ? schemes
+      : schemes.filter((scheme) => {
+          const normalizedSchemeDistrict = normalizeDistrict(scheme.district);
+          return normalizedSchemeDistrict === "All" || normalizedSchemeDistrict === district;
+        });
+
+  const filteredSchemes = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return districtFilteredSchemes;
+    }
+
+    return districtFilteredSchemes.filter((scheme) =>
+      [scheme.name, scheme.eligibility, scheme.amount, normalizeDistrict(scheme.district)]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery)
+    );
+  }, [districtFilteredSchemes, query]);
+
+  const districtSpecificCount = filteredSchemes.filter((scheme) => scheme.district !== "All").length;
 
   return (
     <main className="w-full flex flex-col items-center pb-24 px-4 min-h-screen bg-gray-50">
@@ -76,10 +164,10 @@ export default function GovernmentSchemesPage() {
           <Landmark size={32} className="text-white" />
         </div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-          {t("schemes" as any) || "Government Schemes"}
+          {t("schemes") || "Government Schemes"}
         </h1>
         <p className="text-gray-600 text-sm md:text-base">
-          {t("schemes_desc" as any) || "Find agricultural subsidies"}
+          {t("schemes_desc") || "Find agricultural subsidies"}
         </p>
       </div>
 
@@ -97,10 +185,35 @@ export default function GovernmentSchemesPage() {
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
             >
-              {districts.map(d => (
-                <option key={d} value={d}>{d === "All" ? "Select District..." : d}</option>
+              {districts.map((districtName) => (
+                <option key={districtName} value={districtName}>
+                  {districtName === "All" ? "Select District..." : districtName}
+                </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100">
+          <label className="block text-sm font-bold text-gray-700 mb-2">Search schemes</label>
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by scheme, benefit, or eligibility"
+            className="bg-gray-50"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Matching schemes</p>
+            <p className="mt-2 text-2xl font-bold text-indigo-900">{filteredSchemes.length}</p>
+            <p className="text-xs text-indigo-700">After district and search filters</p>
+          </div>
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">District specific</p>
+            <p className="mt-2 text-2xl font-bold text-orange-900">{districtSpecificCount}</p>
+            <p className="text-xs text-orange-700">Targeted support schemes</p>
           </div>
         </div>
 
@@ -137,6 +250,10 @@ export default function GovernmentSchemesPage() {
 
               <div className="bg-indigo-50 text-indigo-800 px-3 py-2 rounded-xl border border-indigo-100 font-bold mb-4 inline-block">
                 {item.amount}
+              </div>
+
+              <div className="mb-4 text-sm text-gray-600">
+                <span className="font-semibold text-gray-900">District:</span> {normalizeDistrict(item.district)}
               </div>
 
               <a 

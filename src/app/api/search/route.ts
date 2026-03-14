@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
 
+interface DuckDuckGoTopic {
+  Text?: string;
+  FirstURL?: string;
+}
+
+interface DuckDuckGoResponse {
+  AbstractText?: string;
+  Heading?: string;
+  AbstractURL?: string;
+  RelatedTopics?: DuckDuckGoTopic[];
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q");
@@ -11,7 +23,7 @@ export async function GET(request: Request) {
   try {
     // DuckDuckGo Instant Answer API
     const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json`);
-    const data = await res.json();
+    const data = (await res.json()) as DuckDuckGoResponse;
     
     const items = [];
     
@@ -25,7 +37,7 @@ export async function GET(request: Request) {
 
     if (data.RelatedTopics && data.RelatedTopics.length > 0) {
       // Pick top 2 related topics
-      data.RelatedTopics.slice(0, 2).forEach((topic: any) => {
+      data.RelatedTopics.slice(0, 2).forEach((topic) => {
         if (topic.Text) {
           items.push({
             title: topic.Text.split(" - ")[0] || "Related Topic",
@@ -51,7 +63,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ items });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch search results" }, { status: 500 });
   }
 }

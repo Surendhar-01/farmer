@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import en from "../../translations/en.json";
 import ta from "../../translations/ta.json";
 import hi from "../../translations/hi.json";
@@ -20,15 +20,14 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [language, setLanguageState] = useState<Language>("en");
-
-  // Load language from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("farmassist_lang") as Language;
-    if (saved && (saved === "en" || saved === "ta" || saved === "hi")) {
-      setLanguageState(saved);
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window === "undefined") {
+      return "en";
     }
-  }, []);
+
+    const saved = localStorage.getItem("farmassist_lang");
+    return saved === "en" || saved === "ta" || saved === "hi" ? saved : "en";
+  });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

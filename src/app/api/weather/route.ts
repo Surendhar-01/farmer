@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     if (rain === 0 && humidity > 80) forecast = "Cloudy";
 
     return NextResponse.json({ forecast, temp });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch weather" }, { status: 500 });
   }
 }

@@ -6,7 +6,19 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 // Fix Leaflet's default marker icon issue in React
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+interface LeafletDefaultIconPrototype {
+  _getIconUrl?: string;
+}
+
+interface OsrmRouteResponse {
+  routes?: Array<{
+    geometry: {
+      coordinates: [number, number][];
+    };
+  }>;
+}
+
+delete (L.Icon.Default.prototype as LeafletDefaultIconPrototype)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
@@ -45,7 +57,7 @@ export default function LeafletMapView({ markers, destination }: MapViewProps) {
 
       fetch(osrmUrl)
         .then((res) => res.json())
-        .then((data) => {
+        .then((data: OsrmRouteResponse) => {
           if (data.routes && data.routes.length > 0) {
             // GeoJSON returns [lng, lat], Leaflet wants [lat, lng]
             const coords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);

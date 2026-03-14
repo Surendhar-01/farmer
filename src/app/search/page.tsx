@@ -22,7 +22,7 @@ export default function SearchPage() {
           <Search size={32} className="text-white" />
         </div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-          {t("search_crops" as any) || "Search Crops"}
+          {t("search_crops") || "Search Crops"}
         </h1>
       </div>
 

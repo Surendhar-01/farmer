@@ -127,3 +127,11 @@
     @apply font-sans;
   }
 }
+
+.leaflet-container,
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control {
+  z-index: 10 !important;
+}

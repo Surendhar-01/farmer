@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useLanguage, Language } from "@/components/LanguageProvider";
+import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ export default function LoginPage() {
       } else {
         setStep("otp");
       }
-    } catch (err: any) {
+    } catch {
       setError("Failed to send OTP.");
     } finally {
       setLoading(false);
@@ -49,7 +49,7 @@ export default function LoginPage() {
     const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
 
     try {
-      const { error, data } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         phone: formattedPhone,
         token: otp,
         type: "sms",
@@ -61,7 +61,7 @@ export default function LoginPage() {
         // Success! Instead of router.push, show language
         setStep("language");
       }
-    } catch (err: any) {
+    } catch {
       setError("Failed to verify OTP.");
     } finally {
       setLoading(false);
@@ -78,7 +78,7 @@ export default function LoginPage() {
         {step === "language" ? <Globe className="text-blue-600 mb-4" size={64} /> : <Sprout className="text-green-600 mb-4" size={64} />}
         
         <h1 className="text-2xl font-bold mb-6 text-gray-800 text-center">
-          {step === "language" ? t("select_language" as any) || "Select Language" : t("login_title")}
+          {step === "language" ? t("select_language") || "Select Language" : t("login_title")}
         </h1>
 
         {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
@@ -152,7 +152,7 @@ export default function LoginPage() {
               className="w-full py-6 mt-6 text-lg bg-green-600 hover:bg-green-700 rounded-xl"
               onClick={handleCompleteLogin}
             >
-              {t("continue" as any) || "Continue"}
+              {t("continue") || "Continue"}
             </Button>
           </div>
         )}

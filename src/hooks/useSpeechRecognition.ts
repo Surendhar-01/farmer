@@ -1,14 +1,51 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import { useLanguage } from "../components/LanguageProvider";
 import { useRouter } from "next/navigation";
+
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  0: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  results: SpeechRecognitionResultLike[];
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error: string;
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionLike;
+}
+
+interface BrowserSpeechWindow extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
 
 export const useSpeechRecognition = (onResult?: (text: string) => void, disableNavigation: boolean = false) => {
   const { language } = useLanguage();
   const router = useRouter();
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const getLangCode = () => {
     switch (language) {
@@ -49,13 +86,16 @@ export const useSpeechRecognition = (onResult?: (text: string) => void, disableN
     }
   };
 
-  const startListening = useCallback(() => {
-    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+  const startListening = () => {
+    const browserWindow = window as BrowserSpeechWindow;
+    const SpeechRecognitionAPI =
+      browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
       alert("Speech recognition is not supported in this browser.");
       return;
     }
 
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     recognitionRef.current = new SpeechRecognitionAPI();
     
     recognitionRef.current.continuous = false;
@@ -64,7 +104,7 @@ export const useSpeechRecognition = (onResult?: (text: string) => void, disableN
 
     recognitionRef.current.onstart = () => setIsListening(true);
 
-    recognitionRef.current.onresult = (event: any) => {
+    recognitionRef.current.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       if (onResult) onResult(transcript);
       if (!disableNavigation) {
@@ -72,7 +112,7 @@ export const useSpeechRecognition = (onResult?: (text: string) => void, disableN
       }
     };
 
-    recognitionRef.current.onerror = (event: any) => {
+    recognitionRef.current.onerror = (event) => {
       console.error("Speech recognition error", event.error);
       setIsListening(false);
     };
@@ -80,14 +120,14 @@ export const useSpeechRecognition = (onResult?: (text: string) => void, disableN
     recognitionRef.current.onend = () => setIsListening(false);
 
     recognitionRef.current.start();
-  }, [language, onResult, router]);
+  };
 
-  const stopListening = useCallback(() => {
+  const stopListening = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
     setIsListening(false);
-  }, []);
+  };
 
   return { startListening, stopListening, isListening };
 };

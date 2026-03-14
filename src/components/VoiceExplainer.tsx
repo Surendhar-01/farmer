@@ -2,7 +2,6 @@
 
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useState } from "react";
 
 export const VoiceExplainer = ({ textKey }: { textKey: string }) => {
   const { speak, stop, isSpeaking } = useSpeechSynthesis(textKey);
