@@ -1,5 +1,5 @@
 {
-  "welcome": "Welcome to FarmAssist",
+  "welcome": "Welcome to Agri Orbit",
   "dashboard": "Dashboard",
   "market_price": "Market Prices",
   "harvest_advice": "Harvest Advice",
@@ -19,7 +19,7 @@
   "send_otp": "Send OTP",
   "enter_otp": "Enter OTP",
   "verify_otp": "Verify & Login",
-  "login_title": "Login to FarmAssist",
+  "login_title": "Login to Agri Orbit",
   "distance": "Distance",
   "storage_capacity": "Capacity",
   "book_now": "Book Now",

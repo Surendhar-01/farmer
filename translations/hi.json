@@ -1,5 +1,5 @@
 {
-  "welcome": "FarmAssist में आपका स्वागत है",
+  "welcome": "Agri Orbit में आपका स्वागत है",
   "dashboard": "डैशबोर्ड",
   "market_price": "बाजार भाव",
   "harvest_advice": "फसल कटाई की सलाह",
@@ -19,7 +19,7 @@
   "send_otp": "OTP भेजें",
   "enter_otp": "OTP दर्ज करें",
   "verify_otp": "सत्यापित करें और लॉगिन करें",
-  "login_title": "FarmAssist में लॉगिन करें",
+  "login_title": "Agri Orbit में लॉगिन करें",
   "distance": "दूरी",
   "storage_capacity": "क्षमता",
   "book_now": "अभी बुक करें",

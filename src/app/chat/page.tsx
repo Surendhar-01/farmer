@@ -22,7 +22,7 @@ export default function ChatPage() {
 
   // Initial greeting
   useEffect(() => {
-    let greeting = "Hello! I am your FarmAssist AI. How can I help you today?";
+    let greeting = "Hello! I am your Agri Orbit AI. How can I help you today?";
     if (language === "ta") greeting = "வணக்கம்! நான் உங்கள் உழவன் உதவி AI. இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?";
     if (language === "hi") greeting = "नमस्ते! मैं आपका फार्मअसिस्ट एआई हूं। आज मैं आपकी कैसे मदद कर सकता हूं?";
     
@@ -64,7 +64,7 @@ export default function ChatPage() {
     if (query.includes("disease") || query.includes("photo")) return "If your crop is sick, take a photo in the 'Disease Detection' section and the AI will tell you the treatment.";
     if (query.includes("scheme") || query.includes("government")) return "You can find all subsidies in the 'Government Schemes' section on the dashboard.";
     
-    return "I am a simple FarmAssist AI. You can ask me how to use this app, check market prices, find transport, or analyze crop diseases!";
+    return "I am a simple Agri Orbit AI. You can ask me how to use this app, check market prices, find transport, or analyze crop diseases!";
   };
 
   const handleSend = (textOverride?: string) => {
@@ -93,7 +93,7 @@ export default function ChatPage() {
         <BackButton />
         <div className="ml-4 flex items-center">
           <Bot size={24} className="text-green-600 mr-2 mt-4" />
-          <h1 className="text-lg font-bold text-gray-900 mt-4">FarmAssist AI</h1>
+          <h1 className="text-lg font-bold text-gray-900 mt-4">Agri Orbit AI</h1>
         </div>
       </div>
 

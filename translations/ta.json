@@ -1,5 +1,5 @@
 {
-  "welcome": "FarmAssist க்கு স্বাগதம்",
+  "welcome": "Agri Orbit க்கு வரவேற்கிறோம்",
   "dashboard": "முகப்பு",
   "market_price": "சந்தை விலைகள்",
   "harvest_advice": "அறுவடை ஆலோசனை",
@@ -19,7 +19,7 @@
   "send_otp": "OTP ஐ அனுப்பு",
   "enter_otp": "OTP ஐ உள்ளிடவும்",
   "verify_otp": "உறுதிப்படுத்து மற்றும் உள்நுழை",
-  "login_title": "FarmAssist இல் உள்நுழையவும்",
+  "login_title": "Agri Orbit இல் உள்நுழையவும்",
   "distance": "தூரம்",
   "storage_capacity": "கொள்ளளவு",
   "book_now": "இப்போது பதிவு செய்",

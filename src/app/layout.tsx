@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FarmAssist",
+  title: "Agri Orbit",
   description: "AI Smart Farm Market Assistant",
 };
 

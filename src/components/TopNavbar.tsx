@@ -13,7 +13,7 @@ export const TopNavbar = () => {
         {/* Logo / Brand */}
         <Link href="/" className="flex items-center space-x-2">
           <Leaf size={24} className="text-white" />
-          <span className="font-bold text-lg tracking-wide">FarmAssist</span>
+          <span className="font-bold text-lg tracking-wide">Agri Orbit</span>
         </Link>
 
         {/* Language Switcher Dropdown inside Navbar */}
