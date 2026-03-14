@@ -111,10 +111,17 @@ async function createClassifier(
   env.allowLocalModels = true;
   env.allowRemoteModels = true;
 
-  return (await pipeline("zero-shot-image-classification", DEFAULT_MODEL_ID, {
+  const options = {
     device,
-    dtype: device === "webgpu" ? "fp16" : "q8",
-  })) as ZeroShotClassifier;
+    dtype: device === "webgpu" ? ("fp16" as const) : ("q8" as const),
+  };
+
+  const result = await pipeline(
+    "zero-shot-image-classification",
+    DEFAULT_MODEL_ID,
+    options
+  );
+  return result as unknown as ZeroShotClassifier;
 }
 
 async function getClassifier(): Promise<ZeroShotClassifier> {

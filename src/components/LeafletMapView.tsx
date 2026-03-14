@@ -1,3 +1,4 @@
+// cspell:ignore Osrm OSRM osrm
 "use client";
 
 import { useEffect, useState } from "react";
@@ -60,7 +61,9 @@ export default function LeafletMapView({ markers, destination }: MapViewProps) {
         .then((data: OsrmRouteResponse) => {
           if (data.routes && data.routes.length > 0) {
             // GeoJSON returns [lng, lat], Leaflet wants [lat, lng]
-            const coords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+            const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
+              (c: [number, number]) => [c[1], c[0]] as [number, number]
+            );
             setRouteCoordinates(coords);
           }
         })
