@@ -43,7 +43,7 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function parseSimpleCsv<T extends Record<string, string>>(content: string, quoted = false) {
+function parseSimpleCsv<T>(content: string, quoted = false) {
   const [headerLine, ...lines] = content.split(/\r?\n/).filter(Boolean);
   const headers = (quoted
     ? headerLine.split(/","/).map((header) => header.replace(/^"|"$/g, ""))
