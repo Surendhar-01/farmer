@@ -42,6 +42,15 @@ interface NearbyFarmer {
   crop: string
 }
 
+interface TransportOption {
+  driver_name: string
+  vehicle_type: string
+  capacity: number
+  route: string
+  available_date: string
+  price_per_km: number
+}
+
 const DEMO_LOCATIONS: Record<string, [number, number]> = {
   "Madurai": [9.9252, 78.1198],
   "Chennai": [13.0827, 80.2707],
@@ -53,7 +62,7 @@ const DEMO_LOCATIONS: Record<string, [number, number]> = {
   "Thanjavur": [10.7870, 79.1378],
 }
 
-const nearbyFarmers: NearbyFarmer[] = [
+const fallbackFarmers: NearbyFarmer[] = [
   { name: "Ravi Kumar", distance: "2.5 km", crop: "Rice" },
   { name: "Selvam", distance: "3.1 km", crop: "Tomato" },
   { name: "Murugan", distance: "4.2 km", crop: "Onion" },
@@ -81,6 +90,26 @@ export default function TransportationPage() {
   const [isListening, setIsListening] = useState(false)
   const [speechRecognition, setSpeechRecognition] = useState<any>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [transportOptions, setTransportOptions] = useState<TransportOption[]>([])
+
+  // Load Leaflet dynamically only on client-side
+  useEffect(() => {
+    const loadSchemaData = async () => {
+      try {
+        const response = await fetch("/api/schema-data")
+        if (!response.ok) {
+          return
+        }
+
+        const data = (await response.json()) as { transport: TransportOption[] }
+        setTransportOptions(data.transport)
+      } catch {
+        // ignore
+      }
+    }
+
+    void loadSchemaData()
+  }, [])
 
   // Load Leaflet dynamically only on client-side
   useEffect(() => {
@@ -646,11 +675,18 @@ export default function TransportationPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary" />
-                  {t("nearbyFarmers")}
+                  Available Transport
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
-                {nearbyFarmers.map((farmer, index) => (
+                {(transportOptions.length > 0
+                  ? transportOptions.map((option) => ({
+                      name: option.driver_name,
+                      distance: `${option.price_per_km}/km`,
+                      crop: `${option.vehicle_type} • ${option.capacity} kg • ${option.route}`,
+                    }))
+                  : fallbackFarmers
+                ).map((farmer, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
                     <div>
                       <p className="font-medium">{farmer.name}</p>

@@ -1,98 +1,83 @@
 "use client";
 
-import { useLanguage } from "@/components/LanguageProvider";
+import { useEffect, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { BottomNav } from "@/components/BottomNav";
+import { MapView } from "@/components/MapView";
 import { VoiceExplainer } from "@/components/VoiceExplainer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building, MapPin, Snowflake, CheckCircle2 } from "lucide-react";
-import { MapView } from "@/components/MapView";
-import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
-import { BackButton } from "@/components/BackButton";
+import { Building, CheckCircle2, MapPin, Search, Snowflake } from "lucide-react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface StorageEntry {
   id: string;
   name: string;
   address: string;
-  dist: string;
-  cap: string;
-  price: string;
-  lat: number;
-  lng: number;
+  district: string;
+  capacity: string;
+  item: string;
+  sector: string;
 }
 
-interface StorageSearchResult {
-  name?: string;
-  display_name: string;
-  lat: string;
-  lon: string;
+interface CropEntry {
+  name_en: string;
 }
 
 export default function StoragePage() {
   const { t } = useLanguage();
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cropOptions, setCropOptions] = useState<string[]>([]);
+  const [storages, setStorages] = useState<StorageEntry[]>([]);
+  const [searchArea, setSearchArea] = useState("");
 
   const [form, setForm] = useState({
     farmer_name: "",
     crop_type: "",
     quantity: "",
-    days_required: ""
+    days_required: "",
   });
 
-  const [storages, setStorages] = useState<StorageEntry[]>([
-    // Fallback: Authentic TNAU Data from Government of Tamil Nadu Agritech Portal
-    { id: "tn1", name: "Raja Cold Storage", address: "Sendurai main road, Ariyalur-621 704", dist: "Regional", cap: "100 MT", price: "₹25/kg/day", lat: 11.139, lng: 79.076 },
-    { id: "tn2", name: "Tamil Nadu Coop marketing Fed. Ltd", address: "Basin bridge road, Chennai-600 012", dist: "Regional", cap: "200 MT", price: "₹20/kg/day", lat: 13.098, lng: 80.269 },
-    { id: "tn3", name: "Department of racing Guindy", address: "Chennai-32", dist: "Regional", cap: "50 MT", price: "Gov Rate", lat: 13.011, lng: 80.222 },
-    { id: "tn4", name: "Pukharaj Mohanlal", address: "169, Govindappa Naik st, Chennai-1", dist: "Regional", cap: "150 MT", price: "₹25/kg/day", lat: 13.090, lng: 80.280 },
-  ]);
-
-  const fetchNearbyStorage = async (latitude: number, longitude: number) => {
-    try {
-      // Free OpenStreetMap Nominatim API for general nearby searches
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=cold+storage&format=json&limit=2&lat=${latitude}&lon=${longitude}`
-      );
-      const data = (await response.json()) as StorageSearchResult[];
-      
-      const storageOptions = data.map((item, i) => ({
-        id: i.toString(),
-        name: item.name || item.display_name.split(",")[0] || "Regional Cold Storage",
-        address: item.display_name,
-        dist: "12 km", // Mock distance
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-        price: "₹25/kg/day",
-        cap: "500 MT"
-      }));
-      
-      if (storageOptions.length > 0) {
-        // Prepend dynamically found OSM locations to our authentic TNAU fallback locations
-        setStorages((prev) => [...storageOptions, ...prev]);
-      }
-    } catch (err) {
-      console.error("OSM Places Error", err);
-    }
-  };
-
   useEffect(() => {
-    // Example coordinates (central TN approx)
-    fetchNearbyStorage(11.127, 78.656); 
+    const loadData = async () => {
+      try {
+        const [schemaResponse, storageResponse] = await Promise.all([
+          fetch("/api/schema-data"),
+          fetch("/api/storage-data"),
+        ]);
+
+        if (schemaResponse.ok) {
+          const schemaData = (await schemaResponse.json()) as { crops: CropEntry[] };
+          setCropOptions(schemaData.crops.map((crop) => crop.name_en));
+        }
+
+        if (storageResponse.ok) {
+          const storageData = (await storageResponse.json()) as { storages: StorageEntry[] };
+          setStorages(storageData.storages);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    void loadData();
   }, []);
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.from('cold_storage_bookings').insert([{
-        farmer_name: form.farmer_name,
-        crop_type: form.crop_type,
-        quantity: parseInt(form.quantity),
-        days_required: parseInt(form.days_required)
-      }]);
+      const { error } = await supabase.from("cold_storage_bookings").insert([
+        {
+          farmer_name: form.farmer_name,
+          crop_type: form.crop_type,
+          quantity: Number.parseInt(form.quantity, 10),
+          days_required: Number.parseInt(form.days_required, 10),
+        },
+      ]);
       if (!error) {
         setBookingSuccess(true);
         setTimeout(() => setBookingSuccess(false), 3000);
@@ -105,66 +90,134 @@ export default function StoragePage() {
     }
   };
 
+  const filteredStorages = storages.filter((storage) =>
+    [storage.name, storage.address, storage.district, storage.item, storage.sector]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchArea.trim().toLowerCase())
+  );
+
   return (
     <main className="min-h-screen bg-gray-50 pb-24">
       <VoiceExplainer textKey="voice_storage_explainer" />
       <BackButton />
-      
-      <div className="pt-8 pb-6 flex flex-col items-center justify-center text-center w-full">
-        <div className="bg-[#15803d] rounded-full p-4 mb-4 shadow-sm">
+
+      <div className="flex w-full flex-col items-center justify-center pb-6 pt-8 text-center">
+        <div className="mb-4 rounded-full bg-[#15803d] p-4 shadow-sm">
           <Snowflake size={32} className="text-white" />
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
+        <h1 className="mb-1 text-xl font-bold text-gray-900 md:text-2xl">
           {t("cold_storage") || "Cold Storage Locator"}
         </h1>
-        <p className="text-gray-600 text-sm md:text-base">
+        <p className="text-sm text-gray-600 md:text-base">
           {t("storage_desc") || "Find and book nearby storage"}
         </p>
       </div>
 
-      <div className="p-4 space-y-4">
-         <MapView markers={storages.map((storage) => ({ lat: storage.lat, lng: storage.lng, title: storage.name }))} />
+      <div className="space-y-4 p-4">
+        <MapView markers={[]} />
       </div>
 
-      <div className="p-4 space-y-4 mt-2">
-        {storages.map((s, i) => (
-          <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-3 bg-blue-100 rounded-bl-2xl">
+      <div className="px-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            value={searchArea}
+            onChange={(e) => setSearchArea(e.target.value)}
+            placeholder="Search by area, district, or address"
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <div className="mt-2 space-y-4 p-4">
+        {filteredStorages.map((storage) => (
+          <div
+            key={storage.id}
+            className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+          >
+            <div className="absolute right-0 top-0 rounded-bl-2xl bg-blue-100 p-3">
               <Building className="text-blue-800" size={24} />
             </div>
-            <h3 className="font-bold text-xl text-gray-800 pr-10">{s.name}</h3>
-            
-            <div className="flex items-center text-sm text-gray-600 mb-2 mt-2">
+            <h3 className="pr-10 text-xl font-bold text-gray-800">{storage.name}</h3>
+
+            <div className="mb-2 mt-2 flex items-center text-sm text-gray-600">
               <MapPin size={16} className="mr-2 text-gray-400" />
-               {s.dist} {t("distance") || "away"} 
+              {storage.district}
             </div>
-            
-            <div className="flex justify-between items-center mb-4 mt-3">
-              <div className="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full">{t("storage_capacity") || "Capacity"}: {s.cap}</div>
-              <div className="text-gray-800 font-bold">{s.price}</div>
+
+            <p className="mb-3 text-sm text-gray-600">{storage.address}</p>
+
+            <div className="mb-4 mt-3 flex items-center justify-between">
+              <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                {t("storage_capacity") || "Capacity"}: {storage.capacity}
+              </div>
+              <div className="font-bold capitalize text-gray-800">{storage.sector}</div>
+            </div>
+
+            <div className="mb-4 text-sm capitalize text-gray-600">
+              Stored item: {storage.item}
             </div>
 
             <Dialog>
-              <DialogTrigger render={<Button className="w-full py-6 text-lg bg-blue-800 hover:bg-blue-900 rounded-xl" />}>
+              <DialogTrigger
+                render={<Button className="w-full rounded-xl bg-blue-800 py-6 text-lg hover:bg-blue-900" />}
+              >
                 {t("book_now") || t("book_storage")}
               </DialogTrigger>
               <DialogContent className="rounded-3xl p-6">
                 <DialogHeader>
-                  <DialogTitle className="text-2xl text-blue-800">{t("book_storage")}</DialogTitle>
+                  <DialogTitle className="text-2xl text-blue-800">
+                    {t("book_storage")}
+                  </DialogTitle>
                 </DialogHeader>
                 {bookingSuccess ? (
-                  <div className="flex flex-col items-center justify-center p-6 space-y-4">
+                  <div className="flex flex-col items-center justify-center space-y-4 p-6">
                     <CheckCircle2 size={64} className="text-green-500" />
-                    <h2 className="text-xl font-bold text-gray-800">{t("booking_success") || "Booking Successful!"}</h2>
+                    <h2 className="text-xl font-bold text-gray-800">
+                      {t("booking_success") || "Booking Successful!"}
+                    </h2>
                   </div>
                 ) : (
-                  <form onSubmit={handleBooking} className="space-y-4 mt-4">
-                    <Input placeholder="Farmer Name" value={form.farmer_name} onChange={e => setForm({...form, farmer_name: e.target.value})} required />
-                    <Input placeholder="Crop Type (e.g., Tomato)" value={form.crop_type} onChange={e => setForm({...form, crop_type: e.target.value})} required />
-                    <Input type="number" placeholder="Quantity (kg)" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} required />
-                    <Input type="number" placeholder="Days Required" value={form.days_required} onChange={e => setForm({...form, days_required: e.target.value})} required />
-                    <Button type="submit" disabled={loading} className="w-full py-6 text-lg bg-blue-800 hover:bg-blue-900 rounded-xl">
-                      {loading ? "..." : (t("book_now") || "Book Now")}
+                  <form onSubmit={handleBooking} className="mt-4 space-y-4">
+                    <Input
+                      placeholder="Farmer Name"
+                      value={form.farmer_name}
+                      onChange={(e) => setForm({ ...form, farmer_name: e.target.value })}
+                      required
+                    />
+                    <Input
+                      list="crop-options"
+                      placeholder="Crop Type (e.g., Tomato)"
+                      value={form.crop_type}
+                      onChange={(e) => setForm({ ...form, crop_type: e.target.value })}
+                      required
+                    />
+                    <datalist id="crop-options">
+                      {cropOptions.map((crop) => (
+                        <option key={crop} value={crop} />
+                      ))}
+                    </datalist>
+                    <Input
+                      type="number"
+                      placeholder="Quantity (kg)"
+                      value={form.quantity}
+                      onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                      required
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Days Required"
+                      value={form.days_required}
+                      onChange={(e) => setForm({ ...form, days_required: e.target.value })}
+                      required
+                    />
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full rounded-xl bg-blue-800 py-6 text-lg hover:bg-blue-900"
+                    >
+                      {loading ? "..." : t("book_now") || "Book Now"}
                     </Button>
                   </form>
                 )}
@@ -172,6 +225,11 @@ export default function StoragePage() {
             </Dialog>
           </div>
         ))}
+        {filteredStorages.length === 0 && (
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
+            No cold storage found for that area.
+          </div>
+        )}
       </div>
 
       <BottomNav />
