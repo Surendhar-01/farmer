@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { VoiceExplainer } from "@/components/VoiceExplainer";
 import { VoiceNavigator } from "@/components/VoiceNavigator";
 import { TopNavbar } from "@/components/TopNavbar";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
         <LanguageProvider>
           <TopNavbar />
           <div className="pt-16 pb-20 max-w-md mx-auto relative min-h-screen">
+            <VoiceExplainer />
             {children}
             <VoiceNavigator />
           </div>

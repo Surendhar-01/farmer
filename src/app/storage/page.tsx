@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { BottomNav } from "@/components/BottomNav";
 import { MapView } from "@/components/MapView";
-import { VoiceExplainer } from "@/components/VoiceExplainer";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -99,7 +98,6 @@ export default function StoragePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24">
-      <VoiceExplainer textKey="voice_storage_explainer" />
       <BackButton />
 
       <div className="flex w-full flex-col items-center justify-center pb-6 pt-8 text-center">

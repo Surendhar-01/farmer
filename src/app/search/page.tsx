@@ -2,7 +2,6 @@
 
 import { useLanguage } from "@/components/LanguageProvider";
 import { BottomNav } from "@/components/BottomNav";
-import { VoiceExplainer } from "@/components/VoiceExplainer";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState } from "react";
@@ -14,7 +13,6 @@ export default function SearchPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
-      <VoiceExplainer textKey="voice_search_explainer" />
       <BackButton />
       
       <div className="pt-8 pb-6 flex flex-col items-center justify-center text-center w-full">

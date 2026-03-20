@@ -14,6 +14,8 @@ const translations: Record<Language, Translations> = { en, ta, hi };
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
+  voiceExplainerEnabled: boolean;
+  setVoiceExplainerEnabled: (enabled: boolean) => void;
   t: (key: string) => string;
 }
 
@@ -28,6 +30,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     const saved = localStorage.getItem("farmassist_lang");
     return saved === "en" || saved === "ta" || saved === "hi" ? saved : "en";
   });
+  const [voiceExplainerEnabled, setVoiceExplainerEnabled] = useState(false);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
@@ -39,7 +42,9 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider
+      value={{ language, setLanguage, voiceExplainerEnabled, setVoiceExplainerEnabled, t }}
+    >
       {children}
     </LanguageContext.Provider>
   );

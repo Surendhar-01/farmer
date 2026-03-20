@@ -1,7 +1,6 @@
 "use client";
 
 import { useLanguage } from "@/components/LanguageProvider";
-import { VoiceExplainer } from "@/components/VoiceExplainer";
 import { 
   Leaf, 
   Truck, 
@@ -111,8 +110,6 @@ export default function Home() {
 
   return (
     <main className="w-full flex flex-col items-center pb-24">
-      <VoiceExplainer textKey="voice_dashboard_explainer" />
-
       {/* Top Welcome Title Area */}
       <div className="pt-8 pb-6 flex flex-col items-center justify-center text-center px-4 w-full">
         <div className="bg-[#15803d] rounded-full p-4 mb-4 shadow-sm">

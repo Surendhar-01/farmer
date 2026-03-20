@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   AlertCircle,
+  Factory,
   Loader2,
   MapPin,
   Navigation,
@@ -19,18 +20,20 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-interface MarketEntry {
+interface Entry {
   id: string;
   name: string;
   address: string;
   city: string;
   state: string;
   products: string[];
-  type: "market";
+  type: "market" | "factory";
   active: boolean;
   latestArrivalDate: string;
   averageModalPrice: number;
 }
+
+type ActiveTab = "markets" | "factories";
 
 function formatKey(key: string) {
   return key
@@ -54,45 +57,32 @@ function findBestLocationMatch(query: string, locations: string[]) {
 const detectCurrentLocation = () =>
   new Promise<[number, number]>((resolve, reject) => {
     if (typeof window === "undefined" || !navigator.geolocation) {
-      console.warn("[v0] Geolocation unavailable in this browser/context");
       reject(new Error("Geolocation unavailable"));
       return;
     }
 
-    console.log("[v0] Requesting geolocation...");
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log("[v0] Lat/Lng received:", position.coords.latitude, position.coords.longitude);
-        resolve([position.coords.latitude, position.coords.longitude]);
-      },
-      (error) => {
-        console.error("[v0] Geolocation error:", error.code, error.message);
-        reject(error);
-      },
+      (position) => resolve([position.coords.latitude, position.coords.longitude]),
+      (error) => reject(error),
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
     );
   });
 
 const reverseGeocode = async (lat: number, lng: number) => {
   try {
-    console.log("[v0] Reverse geocoding coords:", lat, lng);
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
       {
         headers: {
           "Accept-Language": "en",
-          "User-Agent": "FarmAssist-App/1.0"
+          "User-Agent": "FarmAssist-App/1.0",
         },
       }
     );
 
-    if (!response.ok) {
-      console.error("[v0] Nominatim API error:", response.status, response.statusText);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
-    console.log("[v0] Nominatim raw data:", data);
     const address = data?.address ?? {};
     const city = address.city || address.town || address.village || "";
     const district = address.county || address.state_district || "";
@@ -102,29 +92,27 @@ const reverseGeocode = async (lat: number, lng: number) => {
       data?.display_name ||
       "";
 
-    const result = { city, district, state, label };
-    console.log("[v0] Geocoding result:", result);
-    return result;
-  } catch (error) {
-    console.error("[v0] Reverse geocoding exception:", error);
+    return { city, district, state, label };
+  } catch {
     return null;
   }
 };
 
 export default function MarketPage() {
   const { t } = useLanguage();
-  const [markets, setMarkets] = useState<MarketEntry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("markets");
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
-  const [cropOptions, setCropOptions] = useState<string[]>([]);
+  const [filterOptions, setFilterOptions] = useState<string[]>([]);
   const [searchLocation, setSearchLocation] = useState("");
-  const [selectedCrop, setSelectedCrop] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const [currentCity, setCurrentCity] = useState("");
   const [currentPlaceLabel, setCurrentPlaceLabel] = useState("");
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isDetectingLocation, setIsDetectingLocation] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [isLoadingMarkets, setIsLoadingMarkets] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const translate = useCallback(
     (key: string, fallback: string) => {
@@ -147,10 +135,7 @@ export default function MarketPage() {
             "Location permission was denied. Allow location access in your browser."
           );
         case 2:
-          return translate(
-            "location_unavailable",
-            "Current location is unavailable on this device."
-          );
+          return translate("location_unavailable", "Current location is unavailable on this device.");
         case 3:
           return translate("location_timeout", "Location request timed out. Try again.");
         default:
@@ -163,7 +148,7 @@ export default function MarketPage() {
   useEffect(() => {
     let active = true;
 
-    const loadMarkets = async () => {
+    const loadEntries = async () => {
       try {
         const response = await fetch("/api/market-data");
         if (!response.ok) {
@@ -171,26 +156,26 @@ export default function MarketPage() {
         }
 
         const data = (await response.json()) as {
-          markets: MarketEntry[];
+          entries: Entry[];
           locations: string[];
           cropOptions: string[];
         };
 
         if (!active) return;
-        setMarkets(data.markets);
+        setEntries(data.entries);
         setLocationOptions(data.locations);
-        setCropOptions(data.cropOptions);
+        setFilterOptions(data.cropOptions);
       } catch {
         if (!active) return;
         setLocationError(translate("data_load_failed", "Could not load market data."));
       } finally {
         if (active) {
-          setIsLoadingMarkets(false);
+          setIsLoadingData(false);
         }
       }
     };
 
-    void loadMarkets();
+    void loadEntries();
 
     return () => {
       active = false;
@@ -199,80 +184,66 @@ export default function MarketPage() {
 
   const applyDetectedLocation = useCallback(
     async (coords: [number, number]) => {
-      console.log("[v0] Applying detected coords to markets...");
       const resolved = await reverseGeocode(coords[0], coords[1]);
-      
-      if (!resolved) {
-        console.warn("[v0] Could not resolve coordinates to an address");
-        setUserLocation(coords);
-        setCurrentPlaceLabel(`${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
-        return;
-      }
-
       const candidates = [
-        resolved.city,
-        resolved.district,
-        resolved.state,
-        resolved.district && resolved.state ? `${resolved.district}, ${resolved.state}` : "",
+        resolved?.city,
+        resolved?.district,
+        resolved?.state,
+        resolved?.district && resolved?.state ? `${resolved.district}, ${resolved.state}` : "",
       ].filter(Boolean) as string[];
-
-      console.log("[v0] Match candidates:", candidates);
 
       const resolvedCity =
         candidates
-          .map((candidate) => {
-            const match = findBestLocationMatch(candidate, locationOptions);
-            if (match) console.log("[v0] Found match:", candidate, "->", match);
-            return match;
-          })
+          .map((candidate) => findBestLocationMatch(candidate, locationOptions))
           .find(Boolean) || "";
 
       setUserLocation(coords);
       setCurrentCity(resolvedCity);
       if (resolvedCity) {
-        console.log("[v0] Setting search location to:", resolvedCity);
         setSearchLocation(resolvedCity);
-      } else {
-        console.warn("[v0] No matching market location found for candidates");
       }
-      setCurrentPlaceLabel(resolved.label || `${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
+      setCurrentPlaceLabel(resolved?.label || `${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
       setLocationError(null);
     },
     [locationOptions]
   );
 
   const currentEntries = useMemo(() => {
-    if (!currentCity) return markets;
+    const typeFiltered = entries.filter((entry) =>
+      activeTab === "markets" ? entry.type === "market" : entry.type === "factory"
+    );
+
+    if (!currentCity) return typeFiltered;
 
     const normalized = currentCity.toLowerCase();
-    return markets.filter((entry) =>
+    return typeFiltered.filter((entry) =>
       [entry.name, entry.address, entry.city, entry.state, `${entry.city}, ${entry.state}`]
         .join(" ")
         .toLowerCase()
         .includes(normalized)
     );
-  }, [currentCity, markets]);
+  }, [activeTab, currentCity, entries]);
 
-  const filteredMarkets = useMemo(() => {
+  const filteredEntries = useMemo(() => {
     const normalizedQuery = searchLocation.trim().toLowerCase();
-    const cropFiltered = selectedCrop
+    const filterSelected = selectedFilter
       ? currentEntries.filter((entry) =>
           entry.products.some((product) =>
-            product.toLowerCase().includes(selectedCrop.toLowerCase())
+            product.toLowerCase().includes(selectedFilter.toLowerCase())
           )
         )
       : currentEntries;
 
-    return cropFiltered.filter((entry) =>
+    return filterSelected.filter((entry) =>
       [entry.name, entry.address, entry.city, entry.state, entry.products.join(" ")]
         .join(" ")
         .toLowerCase()
         .includes(normalizedQuery)
     );
-  }, [currentEntries, searchLocation, selectedCrop]);
+  }, [currentEntries, searchLocation, selectedFilter]);
 
   useEffect(() => {
-    if (isLoadingMarkets) {
+    if (isLoadingData) {
       return;
     }
 
@@ -297,7 +268,7 @@ export default function MarketPage() {
         setIsDetectingLocation(false);
       })
       .finally(() => setIsDetectingLocation(false));
-  }, [applyDetectedLocation, getLocationErrorMessage, isLoadingMarkets, translate]);
+  }, [applyDetectedLocation, getLocationErrorMessage, isLoadingData, translate]);
 
   const handleLocationSearch = (locationOverride?: string) => {
     const query = (locationOverride ?? searchLocation).trim();
@@ -306,7 +277,7 @@ export default function MarketPage() {
     setLoading(true);
     const matchingLocation =
       findBestLocationMatch(query, locationOptions) ||
-      markets.find((entry) =>
+      entries.find((entry) =>
         [entry.name, entry.address, entry.city, entry.state]
           .join(" ")
           .toLowerCase()
@@ -320,7 +291,7 @@ export default function MarketPage() {
       setLocationError(null);
     } else {
       setLocationError(
-        translate("location_not_found", "No nearby markets found for that location.")
+        translate("location_not_found", "No nearby markets or factories found for that location.")
       );
     }
 
@@ -342,18 +313,22 @@ export default function MarketPage() {
       });
   };
 
-  const handleDirections = (entry: MarketEntry) => {
+  const handleDirections = (entry: Entry) => {
     const destination = encodeURIComponent(`${entry.name}, ${entry.address}`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${destination}`, "_blank");
   };
 
-  const renderEntryCard = (entry: MarketEntry) => (
+  const renderEntryCard = (entry: Entry) => (
     <Card key={entry.id} className="rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
       <CardContent className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3">
             <div className="rounded-xl bg-[#16a34a] p-3">
-              <Store className="h-5 w-5 text-white" />
+              {entry.type === "factory" ? (
+                <Factory className="h-5 w-5 text-white" />
+              ) : (
+                <Store className="h-5 w-5 text-white" />
+              )}
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900">{entry.name}</h2>
@@ -368,7 +343,9 @@ export default function MarketPage() {
               {entry.active ? translate("open", "Open") : translate("closed", "Closed")}
             </Badge>
             <p className="mt-1 text-xs text-gray-500">
-              {translate("latest_report", "Latest report")}: {entry.latestArrivalDate}
+              {entry.type === "factory"
+                ? translate("factory_type", "Factory")
+                : `${translate("latest_report", "Latest report")}: ${entry.latestArrivalDate}`}
             </p>
           </div>
         </div>
@@ -409,10 +386,10 @@ export default function MarketPage() {
           <TrendingUp size={32} className="text-white" />
         </div>
         <h1 className="text-xl font-bold text-gray-900 md:text-2xl">
-          {translate("market_price_viewer", "Market Prices Nearby")}
+          {translate("market_price_viewer", "Markets and Factories Nearby")}
         </h1>
         <p className="mt-1 text-sm text-gray-600 md:text-base">
-          {translate("market_price_desc", "Browse markets from the weekly commodity CSV")}
+          {translate("market_price_desc", "Browse nearby markets and agricultural factories")}
         </p>
       </div>
 
@@ -457,7 +434,7 @@ export default function MarketPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleLocationSearch();
                 }}
-                placeholder={translate("enter_city_or_area", "Enter market, district, or state")}
+                placeholder={translate("enter_city_or_area", "Enter city, district, or state")}
                 className="h-11 rounded-xl border-gray-200 bg-white pl-10"
               />
             </div>
@@ -517,23 +494,23 @@ export default function MarketPage() {
           <div className="mb-3 flex items-center gap-2">
             <Sprout className="h-4 w-4 text-[#16a34a]" />
             <h2 className="font-semibold text-gray-900">
-              {translate("filter_markets_by_crop", "Filter markets by crop")}
+              {translate("filter_markets_by_crop", "Filter by category")}
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            {cropOptions.slice(0, 12).map((crop) => (
+            {filterOptions.slice(0, 12).map((option) => (
               <Button
-                key={crop}
+                key={option}
                 size="sm"
-                variant={selectedCrop === crop ? "default" : "outline"}
+                variant={selectedFilter === option ? "default" : "outline"}
                 className="capitalize"
-                onClick={() => setSelectedCrop(crop)}
+                onClick={() => setSelectedFilter(option)}
               >
-                {formatKey(crop)}
+                {formatKey(option)}
               </Button>
             ))}
-            {selectedCrop && (
-              <Button size="sm" variant="ghost" onClick={() => setSelectedCrop(null)}>
+            {selectedFilter && (
+              <Button size="sm" variant="ghost" onClick={() => setSelectedFilter(null)}>
                 {translate("clear_filter", "Clear filter")}
               </Button>
             )}
@@ -542,22 +519,37 @@ export default function MarketPage() {
       </Card>
 
       <div className="mb-4 flex gap-2">
-        <Button className="flex-1" disabled>
+        <Button
+          className="flex-1"
+          variant={activeTab === "markets" ? "default" : "outline"}
+          onClick={() => setActiveTab("markets")}
+        >
           <Store className="h-4 w-4" />
           {translate("nearby_markets", "Nearby Markets")}
           <Badge variant="secondary" className="ml-1">
-            {filteredMarkets.length}
+            {entries.filter((entry) => entry.type === "market").length}
+          </Badge>
+        </Button>
+        <Button
+          className="flex-1"
+          variant={activeTab === "factories" ? "default" : "outline"}
+          onClick={() => setActiveTab("factories")}
+        >
+          <Factory className="h-4 w-4" />
+          {translate("nearby_factories", "Nearby Factories")}
+          <Badge variant="secondary" className="ml-1">
+            {entries.filter((entry) => entry.type === "factory").length}
           </Badge>
         </Button>
       </div>
 
       <div className="space-y-4">
-        {loading || isLoadingMarkets ? (
+        {loading || isLoadingData ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-[#16a34a]" />
           </div>
-        ) : filteredMarkets.length > 0 ? (
-          filteredMarkets.map(renderEntryCard)
+        ) : filteredEntries.length > 0 ? (
+          filteredEntries.map(renderEntryCard)
         ) : (
           <Card className="rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
             <CardContent className="p-6 text-center">
@@ -565,7 +557,7 @@ export default function MarketPage() {
               <p className="font-medium text-gray-900">
                 {currentCity
                   ? `${translate("no_results_in_city", "No results found in")} ${currentCity}`
-                  : translate("no_market_results", "No market rows found in the CSV dataset")}
+                  : translate("no_market_results", "No dataset rows found for the selected view")}
               </p>
               <p className="mt-1 text-sm text-gray-500">
                 {translate(

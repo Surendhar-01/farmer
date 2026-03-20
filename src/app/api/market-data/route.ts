@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 
-interface CsvRow {
+interface MarketCsvRow {
   State: string;
   District: string;
   Market: string;
@@ -15,14 +15,22 @@ interface CsvRow {
   "Modal Price": string;
 }
 
-interface MarketEntry {
+interface FactoryCsvRow {
+  State: string;
+  "Factory Type": string;
+  "Factory Name": string;
+  City: string;
+  "Factory ID": string;
+}
+
+interface Entry {
   id: string;
   name: string;
   address: string;
   city: string;
   state: string;
   products: string[];
-  type: "market";
+  type: "market" | "factory";
   active: boolean;
   latestArrivalDate: string;
   averageModalPrice: number;
@@ -35,16 +43,21 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function parseCsv(content: string) {
+function parseSimpleCsv<T extends Record<string, string>>(content: string, quoted = false) {
   const [headerLine, ...lines] = content.split(/\r?\n/).filter(Boolean);
-  const headers = headerLine.split(",") as Array<keyof CsvRow>;
+  const headers = (quoted
+    ? headerLine.split(/","/).map((header) => header.replace(/^"|"$/g, ""))
+    : headerLine.split(",")) as Array<keyof T>;
 
   return lines.map((line) => {
-    const values = line.split(",");
+    const values = quoted
+      ? line.split(/","/).map((value) => value.replace(/^"|"$/g, ""))
+      : line.split(",");
+
     return headers.reduce((row, header, index) => {
       row[header] = values[index] ?? "";
       return row;
-    }, {} as Record<keyof CsvRow, string>);
+    }, {} as Record<keyof T, string>);
   });
 }
 
@@ -55,13 +68,13 @@ function parseArrivalDate(value: string) {
 
 export async function GET() {
   try {
-    const filePath = path.join(process.cwd(), "supabase", "Price_Agriculture_commodities_Week.csv");
-    const content = await readFile(filePath, "utf8");
-    const rows = parseCsv(content);
+    const marketFilePath = path.join(process.cwd(), "supabase", "Price_Agriculture_commodities_Week.csv");
+    const marketContent = await readFile(marketFilePath, "utf8");
+    const marketRows = parseSimpleCsv<MarketCsvRow>(marketContent);
 
-    const grouped = new Map<string, MarketEntry & { latestDateValue: number; modalPriceCount: number }>();
+    const grouped = new Map<string, Entry & { latestDateValue: number; modalPriceCount: number }>();
 
-    for (const row of rows) {
+    for (const row of marketRows) {
       const state = row.State.trim();
       const district = row.District.trim();
       const market = row.Market.trim();
@@ -110,7 +123,7 @@ export async function GET() {
       }
     }
 
-    const markets = Array.from(grouped.values())
+    const markets: Entry[] = Array.from(grouped.values())
       .map(({ latestDateValue: _latestDateValue, modalPriceCount, ...entry }) => ({
         ...entry,
         products: entry.products.sort((left, right) => left.localeCompare(right)).slice(0, 8),
@@ -121,23 +134,48 @@ export async function GET() {
         `${left.state}-${left.city}-${left.name}`.localeCompare(`${right.state}-${right.city}-${right.name}`)
       );
 
+    const factoryFilePath = path.join(
+      process.cwd(),
+      "supabase",
+      "agricultural_factories_india_2025_2026 (1).csv"
+    );
+    const factoryContent = await readFile(factoryFilePath, "utf8");
+    const factoryRows = parseSimpleCsv<FactoryCsvRow>(factoryContent, true);
+
+    const factories: Entry[] = factoryRows.map((row) => ({
+      id: row["Factory ID"].trim() || slugify(`${row.State}-${row.City}-${row["Factory Name"]}`),
+      name: row["Factory Name"].trim(),
+      address: `${row.City.trim()}, ${row.State.trim()}`,
+      city: row.City.trim(),
+      state: row.State.trim(),
+      products: [row["Factory Type"].trim()],
+      type: "factory",
+      active: true,
+      latestArrivalDate: "",
+      averageModalPrice: 0,
+    }));
+
+    const entries = [...markets, ...factories].sort((left, right) =>
+      `${left.state}-${left.city}-${left.name}`.localeCompare(`${right.state}-${right.city}-${right.name}`)
+    );
+
     const locations = Array.from(
       new Set(
-        markets.flatMap((market) => [
-          market.name,
-          market.city,
-          market.state,
-          `${market.city}, ${market.state}`,
+        entries.flatMap((entry) => [
+          entry.name,
+          entry.city,
+          entry.state,
+          `${entry.city}, ${entry.state}`,
         ])
       )
     ).sort((left, right) => left.localeCompare(right));
 
-    const cropOptions = Array.from(new Set(markets.flatMap((market) => market.products))).sort((left, right) =>
+    const cropOptions = Array.from(new Set(entries.flatMap((entry) => entry.products))).sort((left, right) =>
       left.localeCompare(right)
     );
 
-    return NextResponse.json({ markets, locations, cropOptions });
+    return NextResponse.json({ entries, locations, cropOptions });
   } catch {
-    return NextResponse.json({ error: "Failed to load market dataset" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load market and factory dataset" }, { status: 500 });
   }
 }
