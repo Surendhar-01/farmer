@@ -61,8 +61,6 @@ export const useSpeechRecognition = (onResult?: (text: string) => void, disableN
     // Voice Navigation Logic based on user commands
     if (text.includes("market") || text.includes("price") || text.includes("சந்தை") || text.includes("बाजार")) {
       router.push("/market");
-    } else if (text.includes("harvest") || text.includes("அறுவடை") || text.includes("फसल")) {
-      router.push("/harvest");
     } else if (text.includes("alert") || text.includes("warning") || text.includes("வீழ்ச்சி") || text.includes("गिरावट")) {
       router.push("/alerts/price");
     } else if (text.includes("transport") || text.includes("vehicle") || text.includes("வாகனம்") || text.includes("परिवहन")) {
@@ -73,8 +71,6 @@ export const useSpeechRecognition = (onResult?: (text: string) => void, disableN
       router.push("/storage");
     } else if (text.includes("predict") || text.includes("demand") || text.includes("கணிப்பு") || text.includes("भविष्यवाणी")) {
       router.push("/prediction");
-    } else if (text.includes("profit") || text.includes("calculate") || text.includes("லாப") || text.includes("लाभ")) {
-      router.push("/calculator");
     } else if (text.includes("scheme") || text.includes("government") || text.includes("அரசு") || text.includes("योजना")) {
       router.push("/schemes");
     } else if (text.includes("weather") || text.includes("rain") || text.includes("வானிலை") || text.includes("मौसम")) {

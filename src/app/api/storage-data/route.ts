@@ -10,24 +10,45 @@ interface StorageEntry {
   capacity: string;
   item: string;
   sector: string;
+  phone: string;
 }
 
-function stripTags(value: string) {
-  return value.replace(/<[^>]*>/g, " ");
+interface FactoryCsvRow {
+  State: string;
+  "Factory Type": string;
+  "Factory Name": string;
+  City: string;
+  "Factory ID": string;
 }
 
-function decodeHtml(value: string) {
-  return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&#39;/gi, "'")
-    .replace(/&quot;/gi, '"')
-    .replace(/\s+/g, " ")
-    .trim();
+function parseSimpleCsv<T>(content: string, quoted = false) {
+  const [headerLine, ...lines] = content.split(/\r?\n/).filter(Boolean);
+  if (!headerLine) return [];
+  
+  const headers = (quoted
+    ? headerLine.split(/","/).map((header) => header.replace(/^"|"$/g, ""))
+    : headerLine.split(",")) as Array<keyof T>;
+
+  return lines.map((line) => {
+    const values = quoted
+      ? line.split(/","/).map((value) => value.replace(/^"|"$/g, ""))
+      : line.split(",");
+
+    return headers.reduce((row, header, index) => {
+      row[header] = values[index] ?? "";
+      return row;
+    }, {} as Record<keyof T, string>);
+  });
 }
 
-function cleanCell(value: string) {
-  return decodeHtml(stripTags(value));
+function generatePlaceholderPhone(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const randomPart = Math.abs(hash).toString().padEnd(9, "0").slice(0, 9);
+  return `+91 9${randomPart.slice(0, 4)} ${randomPart.slice(4, 9)}`;
 }
 
 function slugify(value: string) {
@@ -39,33 +60,33 @@ function slugify(value: string) {
 
 export async function GET() {
   try {
-    const filePath = path.join(
+    const factoryFilePath = path.join(
       process.cwd(),
       "supabase",
-      "Agricultural Marketing __ LIST OF COLD STORAGE UNITS IN TAMILNADU (1).mht"
+      "agricultural_factories_india_2025_2026 (1).csv"
     );
-    const raw = await readFile(filePath, "utf8");
-    const htmlStart = raw.indexOf("<!DOCTYPE html");
-    const html = htmlStart >= 0 ? raw.slice(htmlStart) : raw;
+    const raw = await readFile(factoryFilePath, "utf8");
+    const rows = parseSimpleCsv<FactoryCsvRow>(raw, true);
 
-    const rows = Array.from(html.matchAll(/<tr>([\s\S]*?)<\/tr>/gi), (match) => match[1]);
     const storages: StorageEntry[] = rows
-      .map((row) =>
-        Array.from(row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi), (match) => cleanCell(match[1]))
-      )
-      .filter((cells) => cells.length === 6 && /^\d+$/.test(cells[0] ?? ""))
-      .map((cells) => ({
-        id: slugify(`${cells[0]}-${cells[1]}`),
-        name: cells[1].split(",")[0]?.trim() || cells[1],
-        address: cells[1],
-        district: cells[2],
-        capacity: `${cells[3]} MT`,
-        item: cells[4],
-        sector: cells[5],
-      }));
+      .filter((row) => row["Factory Type"] === "Cold Storage")
+      .map((row) => {
+        const id = row["Factory ID"] || slugify(`${row.State}-${row.City}-${row["Factory Name"]}`);
+        return {
+          id,
+          name: row["Factory Name"],
+          address: `${row.City}, ${row.State}`,
+          district: row.City,
+          capacity: "5000 MT", // Placeholder as not in CSV
+          item: "General Produce", // Placeholder as not in CSV
+          sector: "Cold Storage",
+          phone: generatePlaceholderPhone(id),
+        };
+      });
 
     return NextResponse.json({ storages });
-  } catch {
+  } catch (error) {
+    console.error("Error loading cold storage data:", error);
     return NextResponse.json({ error: "Failed to load cold storage data" }, { status: 500 });
   }
 }

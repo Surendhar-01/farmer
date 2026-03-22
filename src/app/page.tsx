@@ -8,11 +8,9 @@ import {
   Camera, 
   CloudRain, 
   TrendingUp, 
-  Sprout, 
   BellRing, 
   ShoppingCart, 
   BarChart3, 
-  Calculator,
   Landmark,
   Mic
 } from "lucide-react";
@@ -30,16 +28,9 @@ export default function Home() {
       color: "bg-[#16a34a]"
     },
     {
-      href: "/harvest",
-      icon: <Sprout size={24} className="text-white" />,
-      title: t("harvest_recommendation") || "Harvest Recommendation",
-      desc: t("harvest_desc") || "AI advice on when to harvest",
-      color: "bg-[#15803d]"
-    },
-    {
       href: "/alerts/price",
       icon: <BellRing size={24} className="text-white" />,
-      title: t("price_drop_warning") || "Price Drop Warning",
+      title: "Price Alerts",
       desc: t("price_drop_desc") || "Early alerts for crash prices",
       color: "bg-[#dc2626]"
     },
@@ -70,13 +61,6 @@ export default function Home() {
       title: t("prediction") || "Crop Demand Prediction",
       desc: t("prediction_desc") || "Future demand and market trends",
       color: "bg-[#2563eb]"
-    },
-    {
-      href: "/calculator",
-      icon: <Calculator size={24} className="text-white" />,
-      title: t("calculator") || "Profit Calculator",
-      desc: t("calculator_desc") || "Estimate your farming profits",
-      color: "bg-[#0891b2]"
     },
     {
       href: "/schemes",

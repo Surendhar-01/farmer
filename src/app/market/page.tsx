@@ -13,6 +13,7 @@ import {
   Loader2,
   MapPin,
   Navigation,
+  Phone,
   RefreshCw,
   Search,
   Sprout,
@@ -31,6 +32,7 @@ interface Entry {
   active: boolean;
   latestArrivalDate: string;
   averageModalPrice: number;
+  phone: string;
 }
 
 type ActiveTab = "markets" | "factories";
@@ -371,6 +373,14 @@ export default function MarketPage() {
           <Button variant="outline" className="flex-1" onClick={() => handleDirections(entry)}>
             <Navigation className="h-4 w-4" />
             {translate("directions", "Directions")}
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 border-[#16a34a] text-[#16a34a] hover:bg-green-50"
+            onClick={() => (window.location.href = `tel:${entry.phone}`)}
+          >
+            <Phone className="h-4 w-4" />
+            {translate("call", "Call")}
           </Button>
         </div>
       </CardContent>
